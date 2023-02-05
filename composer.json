@@ -1,8 +1,8 @@
 {
-    "name": "whoyasha/composer-installers",
+    "name": "whoyasha/bx-composer-installers",
     "type": "composer-plugin",
     "license": "MIT",
-    "description": "A multi-framework Composer library installer",
+    "description": "A Bitrix-framework Composer library installer",
     "keywords": [
         "installer",
         "Bitrix"
