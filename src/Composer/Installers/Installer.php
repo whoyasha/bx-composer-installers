@@ -20,6 +20,8 @@ class Installer extends LibraryInstaller
     protected $frameworkType;
     protected $frameworkInstaller;
     
+    protected $BLANK = "Whoyasha";
+    
     /**
      * Package types to installer class map
      *
@@ -97,7 +99,7 @@ class Installer extends LibraryInstaller
 
                 if ( is_dir($this->path) ) {
 
-                    $blank = $this->path . "/bx_utils/BLANK";
+                    $blank = $this->path . "/bx_utils/" . $this->BLANK;
                     $blank_new = $this->path . "/bx_utils/" . \ucwords($module['vendor']);
                     
                     if ( !$isDev ) {
@@ -163,7 +165,7 @@ class Installer extends LibraryInstaller
     
     protected function updNamespace($path, $vendor) {
         $content = \file_get_contents($path);
-        $new_content = str_replace("BLANK", \ucwords($vendor), $content);
+        $new_content = str_replace($this->BLANK, \ucwords($vendor), $content);
         \file_put_contents($path, $new_content);
     }
     
