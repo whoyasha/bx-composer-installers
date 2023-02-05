@@ -99,16 +99,23 @@ class Installer extends LibraryInstaller
 
                 if ( is_dir($this->path) ) {
 
-                    $blank = $this->path . "/bx_utils/" . $this->BLANK;
+                    $blank = $this->path . "/bx_utils/" . "Whoyasha";
                     $blank_new = $this->path . "/bx_utils/" . \ucwords($module['vendor']);
+                   
+                    
+                    $this->updateVersion($package);
                     
                     if ( !$isDev ) {
                         
                         $git = $this->path . "/.git";
+                        $gitignore = $this->path . "/.gitignore";
                         $composer_json = $this->path . "/composer.json";
                     
                         if ( is_dir($git) )
                             $this->filesystem->removeDirectory($git);
+                            
+                        if ( file_exists($gitignore) )
+                            $this->filesystem->unlink($gitignore);
                             
                         if ( file_exists($composer_json) )
                             $this->filesystem->unlink($composer_json);
@@ -147,6 +154,14 @@ class Installer extends LibraryInstaller
         }
     }
     
+    protected function updateVersion(PackageInterface $package) {
+        $version_file = $this->path . "/install/version.php";
+        $version = $package->getVersion();
+        $content = '<?php $arVersion = ["VERSION" => "' . $version . '", "VERSION_DATE" => "'. date('Y-m-d').'"]; ?>';
+        
+        file_put_contents($version_file, $content);
+    }
+    
     protected function setVendorNamespace($dir, $vendor) {
        $finder = Finder::create()
            ->ignoreVCS(false)
@@ -165,7 +180,8 @@ class Installer extends LibraryInstaller
     
     protected function updNamespace($path, $vendor) {
         $content = \file_get_contents($path);
-        $new_content = str_replace($this->BLANK, \ucwords($vendor), $content);
+        $new_content = str_replace("Whoyasha", \ucwords($vendor), $content);
+        
         \file_put_contents($path, $new_content);
     }
     
