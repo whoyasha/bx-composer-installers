@@ -98,7 +98,7 @@ class Installer extends LibraryInstaller
                 if ( is_dir($this->path) ) {
 
                     $blank = $this->path . "/bx_utils/BLANK";
-                    $blank_new = $this->path . "/bx_main/" . \ucwords($module['vendor']);
+                    $blank_new = $this->path . "/bx_utils/" . \ucwords($module['vendor']);
                     
                     if ( !$isDev ) {
                         
