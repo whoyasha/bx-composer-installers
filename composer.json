@@ -10,6 +10,11 @@
     "homepage": "https://composer.github.io/installers/",
     "authors": [
         {
+            "name": "Yasha Okoneshnikov",
+            "email": "y@iagent.ru",
+            "homepage": "https://iagent.ru"
+        },
+        {
             "name": "Kyle Robinson Young",
             "email": "kyle@dontkry.com",
             "homepage": "https://github.com/shama"
