@@ -154,8 +154,8 @@ class Installer extends LibraryInstaller
                             $this->filesystem->unlink($composer_json);
                     }
                         
-                    if ( isset($module["blank_libs"]) && count($module["blank_libs"]) > 0 ) {
-                        foreach ( $module["blank_libs"] as $lib ) { 
+                    if ( isset($module["libs"]) && count($module["libs"]) > 0 ) {
+                        foreach ( $module["libs"] as $lib ) { 
                             $this->addLibsStruct($lib, $module);
                         }
                     }
