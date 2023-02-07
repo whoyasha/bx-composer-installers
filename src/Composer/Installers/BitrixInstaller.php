@@ -32,14 +32,13 @@ use React\Promise\PromiseInterface;
 class BitrixInstaller extends BaseInstaller
 {
 	private $module_settings = [];
-	private $errors = [];
 	
 	/** @var array<string, string> */
 	protected $locations = array(
-		'd7-template' => '{$bitrix_dir}/modules/{$vendor}_{$name}/'
-		// 'd7-module' => '{$bitrix_dir}/modules/{$vendor}_{$name}/'
+		// 'module' => '{$bitrix_dir}/modules/{$vendor}_{$name}/',
+		// 'd7-module' => '{$bitrix_dir}/modules/{$vendor}_{$name}/',
+		'd7-modules' => '{$bitrix_dir}/modules/{$vendor}_{$name}/'
 	);
-
 	/**
 	 * @var string[] Storage for informations about duplicates at all the time of installation packages.
 	 */
@@ -54,80 +53,96 @@ class BitrixInstaller extends BaseInstaller
 		/** @phpstan-ignore-next-line */
 		if ($this->composer->getPackage()) {
 			$extra = $this->composer->getPackage()->getExtra();
-
-			if (isset($extra['bitrix-dir'])) {
-				$vars['bitrix_dir'] = $extra['bitrix-dir'];
-			}
 			
+			$vars['name'] = NULL;
+
 			if ( isset($extra['installer-vendor']) ) {
 				$vars['vendor'] = $extra['installer-vendor'];
 			} else {
 				throw new \Exception('installer-vendor должно быть заполнено');
 			}
+			
+			if ( isset($extra['']) ) {
+				$vars['bx-skeleton-main'] = $extra['bx-skeleton-main'];
+			}
+			
+			if (isset($extra['bx-skeleton-modules']) && count($extra['bx-skeleton-modules']) > 0) {
 
-			if (isset($extra['modules'])) {
-				$vars['name'] = NULL;
-
-				foreach ( $extra['modules'] as $module ) {
-					if ( !$module['current'] )
+				foreach ( $extra['bx-skeleton-modules'] as $module ) {
+					
+					if ( !$module['current'] ) {
 						continue;
-						
+					}
+					
 					unset($module["current"]);
+
+					$prep_name = $this->prepareName($module['name']);	
+
+					$vars['name'] = $prep_name["name"];
+					if ( array_key_exists("vendor", $prep_name) )
+						$vars['vendor'] = $prep_name["vendor"];
 					
 					$module['vendor'] = $vars['vendor'];
 					
-					$vars['name'] = $this->prepareName($module['name']);					
+					$module['is_main'] = false;
+					if ( isset($vars['bx-skeleton-main']) && $vars['name'] == $vars['bx-skeleton-main']) {
+						$module['is_main'] = true;
+						
+						$this->io->writeError('    <error>Module ' . $vars['name'] . ' is main</error>');
+					}				
 
 					if ( isset($module['site_path']) && !empty($module['site_path']) ) {
 						$vars['site_path'] = $module['site_path'];
 						$vars['bitrix_dir'] = $vars['site_path'] . '/local';
 					}
-					
+
+					$module["has_main"] = $this->hasMain($vars);
 					$this->module_settings = $module;
-					$this->checkMain($vars);
 
 					break;
 				}
 
-				if ( is_null($vars['name']) ) {
-					array_push($this->errors, 'Current item not defined');
+				if ( isset($vars['site_path']) ) {
+					$vars['bitrix_dir'] = $vars['site_path'] . '/local';
+				} else {
+					$vars['bitrix_dir'] = "www/local";
 				}
-			} elseif (!empty($extra['installer-name'])) {
-				$vars['name'] = $extra['installer-name'];
+				
+				if ( is_null($vars['name']) ) {
+					$this->module_settings = NULL;
+					// array_push($this->errors, 'Not module to install found');
+				}
 			}
-		}
-
-		if ( isset($vars['site_path']) ) {
-			$vars['bitrix_dir'] = $vars['site_path'] . '/local';
-		} elseif ( !isset($vars['bitrix_dir']) ) {
-			$vars['bitrix_dir'] = $extra['bitrix_dir'];
-		} else {
-			$vars['bitrix_dir'] = "www/local";
 		}
 
 		return parent::inflectPackageVars($vars);
 	}
 	
-	protected function checkMain( array $vars ) : void {
+	protected function hasMain( array $vars ) {
 		
-		$main_dir = realpath($vars['site_path'] . "/local/modules/" . $vars['vendor'] . "_bx_main");
+		$main_dir = realpath($vars['bitrix_dir'] . "/modules/" . $vars['vendor'] . "_bx_main");
 		$main_dir_log = $main_dir . "/log";
 		
-		if ( !is_dir($main_dir) && $vars['name'] != "bx_main" ) {
-			throw new \Exception('bx_main не инсталирован композером');
-		}
-		
-		if ( !is_dir($main_dir_log) && $vars['name'] != "bx_main" ) {
-			throw new \Exception('bx_main не установлен в системе Bitrix');
-		}
+		return is_dir($main_dir);
 	}
 	
-	protected function prepareName( $name ) : string {
+	protected function prepareName( $name ) : array {
 		$check = explode("/", $name);
-		if ( count($check) > 1 )
-			return strtolower($check[1]);
+		
+		if ( count($check) > 1 ) {
+			$name = "";
+			$check_1 = explode(".", $check[1]);
 			
-		return strtolower($name);
+			if ( count($check_1) > 1 ) {
+				$name = $check_1[0] . "_" . $check_1[1];
+			} else {
+				$name = $check[1];
+			}
+			
+			return ["vendor" => $check[0], "name" => strtolower($name)];
+		}
+			
+		return ["name" => strtolower($name)];
 	}
 
 

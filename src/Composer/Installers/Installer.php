@@ -75,34 +75,67 @@ class Installer extends LibraryInstaller
         return $this->path;
     }
     
+    /**
+     * TODO проверка инсталированных модулей
+     */
+    protected function checkInstalled($module, PackageInterface $package) {
+        
+    }
+    
     public function install(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
-        $this->pckg = $package;
+        $module = $this->frameworkInstaller->GetModuleSettings();
+        
+        $errors = function () use($module) {
+            $this->io->writeError('    <error>Нет модулей для инсталяции</error>');
+        };
+        
+        if ( is_null($module) ) {
+            $package->setDistUrl("");
+            $promise = parent::install($repo, $package);
+                
+            if ($promise instanceof PromiseInterface) {
+                return $promise->then($errors);
+            }
+        }
+        
+        $this->pckg = NULL;
+        if ( $package instanceof PackageInterface )
+            $this->pckg = $package;
+        
         $promise = parent::install($repo, $package);
             
         if ( $this->frameworkType == "bitrix" ) {
 
-            $callback = function () use ($repo, $package) {
+            $callback = function () use ($repo, $package, $module) {
+                /**
+                 * Check is dev вынести в отдельный метод
+                 */
+                $isDev = NULL;
                 
-                $isDev =  $this->pckg->isDev();
+                if ( $package instanceof PackageInterface )
+                    $isDev =  $package->isDev();
+                
+                if ( isset($module["dev"]) )
+                    $isDev = $module["dev"];
+                /**/
+                
+                /**
+                 * TODO сделать module_vendor иначе качает .git e.t.c
+                 * впеменное решение ниже
+                 */
+                 $dev_vendors = ['vdnh', 'whoyasha'];
+                 if ( !in_array($module['vendor'], $dev_vendors) )
+                    $isDev = false;
+                /**/
                 
                 if ( $isDev ) {
-                    
-                    $pname =  $this->pckg->getName();
-
-                    $this->io->write('    <warning>Packages ' . $pname . ' is in dev mode</warning>');
-                    
-                    unset( $this->pckg);
+                    $pname = $package->getName();
+                    $this->io->writeError('    <warning>Packages ' . $pname . ' is in dev mode</warning>');
                 }
-                
-                $module = $this->frameworkInstaller->GetModuleSettings();
 
                 if ( is_dir($this->path) ) {
 
-                    $blank = $this->path . "/bx_utils/" . "Whoyasha";
-                    $blank_new = $this->path . "/bx_utils/" . \ucwords($module['vendor']);
-                   
-                    
                     $this->updateVersion($package);
                     
                     if ( !$isDev ) {
@@ -119,27 +152,27 @@ class Installer extends LibraryInstaller
                             
                         if ( file_exists($composer_json) )
                             $this->filesystem->unlink($composer_json);
-                        
                     }
                         
-                    if ( isset($module["libs"]) && count($module["libs"]) > 0 )
-                        foreach ( $module["libs"] as $lib ) {
-                            
-                            if ( $lib == "bx_utils" )
-                                continue;
-                                
+                    if ( isset($module["blank_libs"]) && count($module["blank_libs"]) > 0 ) {
+                        foreach ( $module["blank_libs"] as $lib ) { 
                             $this->addLibsStruct($lib, $module);
                         }
-                        
-                    if ( is_dir($blank) ) {
-                        if ( !$this->filesystem->isDirEmpty($blank) ) {
-                            $this->setVendorNamespace($blank, $module['vendor']);
-                        }
-                        $this->filesystem->rename($blank, $blank_new);
                     }
+                    
+                    // $blank = $this->path . "/bx_utils/" . "Whoyasha";
+                    //    
+                    // if ( is_dir($blank) ) {
+                    //     $blank_new = $this->path . "/bx_utils/" . \ucwords($module['vendor']);
+                    //     
+                    //     if ( !$this->filesystem->isDirEmpty($blank) ) {
+                    //         $this->setVendorNamespace($blank, $module['vendor']);
+                    //     }
+                    //     $this->filesystem->rename($blank, $blank_new);
+                    // }
                             
                     if ( isset($module["lang_files"]) && is_array($module["lang_files"]) && count($module["lang_files"]) > 0 )
-                        $this->addModuleLangFiles($module["lang_files"]);
+                        $this->addModuleLangFiles($module);
 
                 } else {
                     throw new \Exception('Module path not defined');
@@ -152,6 +185,10 @@ class Installer extends LibraryInstaller
             
             $callback();
         }
+    }
+    
+    protected function checkBitrix() {
+        
     }
     
     protected function updateVersion(PackageInterface $package) {
@@ -185,14 +222,14 @@ class Installer extends LibraryInstaller
         \file_put_contents($path, $new_content);
     }
     
-    protected function addModuleLangFiles($langs) {
+    protected function addModuleLangFiles($module) {
         
         $langs_dir = $this->path . "/lang";
         
         if ( !is_dir($langs_dir) )
             \mkdir($langs_dir);
         
-        foreach ( $langs as $lang ) {
+        foreach ( $module["lang_files"] as $lang ) {
             $lang_dir = $langs_dir . "/" . $lang;
             $lang_include_php = $lang_dir . "/include.php";
             
@@ -201,7 +238,7 @@ class Installer extends LibraryInstaller
             
             if ( !file_exists($lang_include_php) ) {
                 $content = "<?php if (!defined(\"B_PROLOG_INCLUDED\") || B_PROLOG_INCLUDED!==true) die();" . PHP_EOL;
-                $content .= "\$MESS[\"YOU_MESSAGE_CODE\"]=\"\";" . PHP_EOL;
+                $content .= "\$MESS[\"" . strtoupper($module["vendor"]) . "_" . strtoupper($module["name"]) . "_YOU_MESSAGE_CODE\"]=\"\";" . PHP_EOL;
                 $content .= "?>" . PHP_EOL;
                 
                 file_put_contents($lang_include_php, $content);
@@ -222,6 +259,7 @@ class Installer extends LibraryInstaller
     }
     
     protected function addLibsStruct($lib, $module) {
+        
         $vendor = '';
         if ( !empty($module['vendor']) )
             $vendor = "/" . \ucwords($module['vendor']);
@@ -256,6 +294,9 @@ class Installer extends LibraryInstaller
 
     public function uninstall(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
+        /**
+         * TODO попробовать сделать удаление файлов модуля по его реальному пути
+         */
         $installPath = $this->getPackageBasePath($package);
         $io = $this->io;
         $outputStatus = function () use ($io, $installPath) {
