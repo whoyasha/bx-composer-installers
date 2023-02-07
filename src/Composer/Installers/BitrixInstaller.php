@@ -95,6 +95,12 @@ class BitrixInstaller extends BaseInstaller
 						$vars['site_path'] = $module['site_path'];
 						$vars['bitrix_dir'] = $vars['site_path'] . '/local';
 					}
+					
+					if ( isset($vars['site_path']) ) {
+						$vars['bitrix_dir'] = $vars['site_path'] . '/local';
+					} else {
+						$vars['bitrix_dir'] = "www/local";
+					}
 
 					$module["has_main"] = $this->hasMain($vars);
 					$this->module_settings = $module;
@@ -102,12 +108,6 @@ class BitrixInstaller extends BaseInstaller
 					break;
 				}
 
-				if ( isset($vars['site_path']) ) {
-					$vars['bitrix_dir'] = $vars['site_path'] . '/local';
-				} else {
-					$vars['bitrix_dir'] = "www/local";
-				}
-				
 				if ( is_null($vars['name']) ) {
 					$this->module_settings = NULL;
 					// array_push($this->errors, 'Not module to install found');
