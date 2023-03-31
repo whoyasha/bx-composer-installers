@@ -89,8 +89,9 @@ class BitrixInstaller extends BaseInstaller
 						$module['is_main'] = true;
 						
 						$this->io->writeError('    <error>Module ' . $vars['name'] . ' is main</error>');
-					}				
-
+					}
+					
+					$vars['bitrix_dir'] = $extra['bitrix_dir'];		
 					if ( isset($module['site_path']) && !empty($module['site_path']) ) {
 						$vars['site_path'] = $module['site_path'];
 						$vars['bitrix_dir'] = $vars['site_path'] . '/local';
